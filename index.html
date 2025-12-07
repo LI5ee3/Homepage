@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Infinity Pro 风格新标签页</title>
+  <!-- 引入外部资源 -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/axios@1.6.7/dist/axios.min.js"></script>
+  
+  <!-- Tailwind 配置 -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#4F46E5', // 主色调
+            secondary: '#10B981', // 辅助色
+            dark: '#1E293B',
+            light: '#F8FAFC',
+          },
+          fontFamily: {
+            inter: ['Inter', 'system-ui', 'sans-serif'],
+          },
+        },
+      }
+    }
+  </script>
+  
+  <!-- 自定义样式 -->
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .backdrop-blur-xl {
+        backdrop-filter: blur(24px);
+      }
+      .text-shadow {
+        text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      }
+      .hover-scale {
+        transition: transform 0.2s ease;
+      }
+      .hover-scale:hover {
+        transform: scale(1.05);
+      }
+      .card-shadow {
+        box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+      }
+    }
+    
+    body {
+      background-size: cover;
+      background-position: center;
+      background-attachment: fixed;
+      transition: background-image 1s ease-in-out;
+    }
+    
+    .shortcut-card {
+      @apply bg-white/80 dark:bg-dark/80 backdrop-blur-xl rounded-lg p-4 card-shadow hover-scale cursor-pointer flex flex-col items-center justify-center w-24 h-24;
+    }
+    
+    .search-input {
+      @apply w-full max-w-2xl py-3 px-5 rounded-full bg-white/70 dark:bg-dark/70 backdrop-blur-xl border-0 focus:ring-2 focus:ring-primary/50 outline-none transition-all;
+    }
+  </style>
+</head>
+
+<body class="font-inter min-h-screen flex flex-col items-center justify-center text-dark dark:text-light p-4">
+  <!-- 背景遮罩 -->
+  <div class="absolute inset-0 bg-black/30 dark:bg-black/50 z-0"></div>
+  
+  <!-- 主要内容容器 -->
+  <div class="relative z-10 w-full max-w-7xl flex flex-col items-center gap-8">
+    <!-- 时间和日期 -->
+    <div class="text-center mb-4">
+      <h1 id="time" class="text-[clamp(4rem,10vw,8rem)] font-bold text-light text-shadow leading-none">12:30</h1>
+      <p id="date" class="text-[clamp(1rem,2vw,1.25rem)] text-light/90 text-shadow mt-2">星期一, 2025年1月1日</p>
+    </div>
+    
+    <!-- 搜索框 -->
+    <div class="w-full max-w-2xl mb-6">
+      <input type="text" id="search-input" class="search-input" 
+             placeholder="搜索网页、文件或设置...">
+    </div>
+    
+    <!-- 天气卡片 -->
+    <div id="weather-card" class="hidden bg-white/80 dark:bg-dark/80 backdrop-blur-xl rounded-lg p-4 card-shadow hover-scale flex items-center gap-4 w-full max-w-xs">
+      <i class="fa fa-sun-o text-3xl text-yellow-500"></i>
+      <div>
+        <p id="weather-city" class="font-medium">北京市</p>
+        <p id="weather-temp" class="text-xl font-bold">25°C</p>
+        <p id="weather-desc" class="text-sm opacity-80">晴朗</p>
+      </div>
+    </div>
+    
+    <!-- 快捷方式区域 -->
+    <div class="w-full">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-xl font-bold text-light text-shadow">常用快捷方式</h2>
+        <button id="add-shortcut-btn" class="bg-white/80 dark:bg-dark/80 backdrop-blur-xl rounded-full p-2 card-shadow hover-scale">
+          <i class="fa fa-plus text-light"></i>
+        </button>
+      </div>
+      
+      <div id="shortcuts-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+        <!-- 默认快捷方式 -->
+        <div class="shortcut-card" data-url="https://www.baidu.com">
+          <i class="fa fa-search text-2xl mb-2 text-primary"></i>
+          <span class="text-sm font-medium">百度</span>
+        </div>
+        <div class="shortcut-card" data-url="https://www.bilibili.com">
+          <i class="fa fa-play-circle text-2xl mb-2 text-pink-500"></i>
+          <span class="text-sm font-medium">哔哩哔哩</span>
+        </div>
+        <div class="shortcut-card" data-url="https://mail.qq.com">
+          <i class="fa fa-envelope text-2xl mb-2 text-blue-500"></i>
+          <span class="text-sm font-medium">QQ邮箱</span>
+        </div>
+        <div class="shortcut-card" data-url="https://www.zhihu.com">
+          <i class="fa fa-comment text-2xl mb-2 text-blue-400"></i>
+          <span class="text-sm font-medium">知乎</span>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 设置按钮 -->
+    <button id="settings-btn" class="absolute top-4 right-4 bg-white/80 dark:bg-dark/80 backdrop-blur-xl rounded-full p-3 card-shadow hover-scale">
+      <i class="fa fa-cog text-light"></i>
+    </button>
+  </div>
+  
+  <!-- 添加快捷方式模态框 -->
+  <div id="shortcut-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-20">
+    <div class="bg-white dark:bg-dark rounded-lg p-6 w-full max-w-md card-shadow">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-xl font-bold">添加快捷方式</h3>
+        <button id="close-modal-btn" class="text-gray-500 hover:text-gray-700 dark:text-gray-400">
+          <i class="fa fa-times"></i>
+        </button>
+      </div>
+      <div class="flex flex-col gap-3">
+        <input type="text" id="shortcut-name" class="px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 dark:bg-dark/50" placeholder="名称 (例如：知乎)">
+        <input type="url" id="shortcut-url" class="px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 dark:bg-dark/50" placeholder="网址 (例如：https://www.zhihu.com)">
+        <input type="text" id="shortcut-icon" class="px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 dark:bg-dark/50" placeholder="图标 (例如：fa fa-comment)">
+      </div>
+      <button id="save-shortcut-btn" class="mt-4 w-full bg-primary text-white py-2 rounded-lg hover:bg-primary/90 transition-colors">
+        保存
+      </button>
+    </div>
+  </div>
+
+  <script>
+    // 1. 时间和日期更新
+    function updateDateTime() {
+      const now = new Date();
+      // 格式化时间
+      const hours = now.getHours().toString().padStart(2, '0');
+      const minutes = now.getMinutes().toString().padStart(2, '0');
+      document.getElementById('time').textContent = `${hours}:${minutes}`;
+      
+      // 格式化日期
+      const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+      const year = now.getFullYear();
+      const month = now.getMonth() + 1;
+      const day = now.getDate();
+      const weekday = weekdays[now.getDay()];
+      document.getElementById('date').textContent = `${weekday}, ${year}年${month}月${day}日`;
+    }
+    
+    // 每秒更新时间
+    setInterval(updateDateTime, 1000);
+    updateDateTime();
+    
+    // 2. 随机背景图
+    const backgrounds = [
+      'https://picsum.photos/id/1000/1920/1080',
+      'https://picsum.photos/id/1001/1920/1080',
+      'https://picsum.photos/id/1002/1920/1080',
+      'https://picsum.photos/id/1003/1920/1080',
+      'https://picsum.photos/id/1004/1920/1080',
+    ];
+    
+    function setRandomBackground() {
+      const randomBg = backgrounds[Math.floor(Math.random() * backgrounds.length)];
+      document.body.style.backgroundImage = `url(${randomBg})`;
+    }
+    
+    // 初始化背景
+    setRandomBackground();
+    // 每30分钟更换一次背景
+    setInterval(setRandomBackground, 30 * 60 * 1000);
+    
+    // 3. 搜索功能
+    const searchInput = document.getElementById('search-input');
+    searchInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter' && searchInput.value.trim()) {
+        // 使用百度搜索
+        const searchUrl = `https://www.baidu.com/s?wd=${encodeURIComponent(searchInput.value.trim())}`;
+        window.location.href = searchUrl;
+      }
+    });
+    
+    // 4. 快捷方式点击跳转
+    document.getElementById('shortcuts-grid').addEventListener('click', (e) => {
+      const shortcutCard = e.target.closest('.shortcut-card');
+      if (shortcutCard && shortcutCard.dataset.url) {
+        window.open(shortcutCard.dataset.url, '_blank');
+      }
+    });
+    
+    // 5. 添加快捷方式模态框
+    const addShortcutBtn = document.getElementById('add-shortcut-btn');
+    const shortcutModal = document.getElementById('shortcut-modal');
+    const closeModalBtn = document.getElementById('close-modal-btn');
+    const saveShortcutBtn = document.getElementById('save-shortcut-btn');
+    
+    addShortcutBtn.addEventListener('click', () => {
+      shortcutModal.classList.remove('hidden');
+    });
+    
+    closeModalBtn.addEventListener('click', () => {
+      shortcutModal.classList.add('hidden');
+    });
+    
+    // 点击模态框外部关闭
+    shortcutModal.addEventListener('click', (e) => {
+      if (e.target === shortcutModal) {
+        shortcutModal.classList.add('hidden');
+      }
+    });
+    
+    // 保存快捷方式
+    saveShortcutBtn.addEventListener('click', () => {
+      const name = document.getElementById('shortcut-name').value.trim();
+      const url = document.getElementById('shortcut-url').value.trim();
+      const icon = document.getElementById('shortcut-icon').value.trim() || 'fa fa-globe';
+      
+      if (!name || !url) {
+        alert('请输入名称和网址');
+        return;
+      }
+      
+      // 创建新的快捷方式卡片
+      const shortcutsGrid = document.getElementById('shortcuts-grid');
+      const newShortcut = document.createElement('div');
+      newShortcut.className = 'shortcut-card';
+      newShortcut.dataset.url = url;
+      newShortcut.innerHTML = `
+        <i class="${icon} text-2xl mb-2 text-primary"></i>
+        <span class="text-sm font-medium">${name}</span>
+      `;
+      
+      shortcutsGrid.appendChild(newShortcut);
+      
+      // 关闭模态框并清空输入
+      shortcutModal.classList.add('hidden');
+      document.getElementById('shortcut-name').value = '';
+      document.getElementById('shortcut-url').value = '';
+      document.getElementById('shortcut-icon').value = '';
+    });
+    
+    // 6. 天气功能 (需要替换为自己的天气API key)
+    async function fetchWeather() {
+      try {
+        // 这里使用IP定位获取城市（实际项目建议使用更稳定的API）
+        const ipRes = await axios.get('https://api.ipify.org?format=json');
+        const ip = ipRes.data.ip;
+        
+        // 替换为免费天气API (示例使用高德天气API，需要申请key)
+        // const weatherRes = await axios.get(`https://restapi.amap.com/v3/weather/weatherInfo?key=你的高德APIKey&city=${city}&extensions=base`);
+        
+        // 模拟天气数据
+        document.getElementById('weather-card').classList.remove('hidden');
+        document.getElementById('weather-city').textContent = '北京市';
+        document.getElementById('weather-temp').textContent = '25°C';
+        document.getElementById('weather-desc').textContent = '晴朗';
+      } catch (error) {
+        console.error('获取天气失败:', error);
+      }
+    }
+    
+    // 初始化天气
+    fetchWeather();
+    // 每小时更新一次天气
+    setInterval(fetchWeather, 60 * 60 * 1000);
+    
+    // 7. 暗黑模式切换 (简单实现)
+    const settingsBtn = document.getElementById('settings-btn');
+    settingsBtn.addEventListener('click', () => {
+      document.documentElement.classList.toggle('dark');
+      // 保存暗黑模式偏好
+      localStorage.setItem('darkMode', document.documentElement.classList.contains('dark'));
+    });
+    
+    // 恢复暗黑模式偏好
+    if (localStorage.getItem('darkMode') === 'true') {
+      document.documentElement.classList.add('dark');
+    }
+  </script>
+</body>
+</html>
